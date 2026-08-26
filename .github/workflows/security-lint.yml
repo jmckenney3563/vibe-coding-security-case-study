@@ -30,7 +30,7 @@ jobs:
         run: |
           echo "Verifying no hardcoded service_role keys or secrets exist in repository..."
           # Prevent accidental check-in of Supabase service role keys or real private tokens
-          if grep -rEi 'service_role_key|eyJh[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' . \
+          if grep -rEi --exclude-dir=.github 'service_role_key|eyJh[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' . \
              --exclude-dir=.git --exclude='*.md'; then
             echo "❌ CRITICAL: Potential live JWT or service token detected in source files."
             exit 1
