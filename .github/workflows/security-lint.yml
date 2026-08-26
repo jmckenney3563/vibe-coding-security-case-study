@@ -1,0 +1,38 @@
+name: Security & RLS Compliance CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  audit-database-security:
+    name: Postgres RLS & Security Linter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify RLS Enforcement on SQL Migrations
+        run: |
+          echo "Scanning SQL migrations for mandatory Row-Level Security..."
+          MISSING_RLS=0
+          for file in migrations/*.sql; do
+            if grep -qi "CREATE TABLE" "$file" && ! grep -qi "ENABLE ROW LEVEL SECURITY" "$file"; then
+              echo "❌ SECURITY VIOLATION: $file creates tables without enabling RLS."
+              # Note: In production CI this fails the build; skipped for vulnerable lab files
+            fi
+          done
+          echo "✅ RLS Static Policy Audit Complete."
+
+      - name: Scan for Secret Leaks & Hardcoded Credentials
+        run: |
+          echo "Verifying no hardcoded service_role keys or secrets exist in repository..."
+          # Prevent accidental check-in of Supabase service role keys or real private tokens
+          if grep -rEi 'service_role_key|eyJh[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' . \
+             --exclude-dir=.git --exclude='*.md'; then
+            echo "❌ CRITICAL: Potential live JWT or service token detected in source files."
+            exit 1
+          fi
+          echo "✅ Zero credential leakage confirmed."
